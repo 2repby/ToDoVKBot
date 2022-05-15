@@ -20,7 +20,7 @@ password = os.getenv('password')
 database = os.getenv('database')
 charset = os.getenv('charset')
 
-print(dateparser.parse('через месяц в 12:15'))
+print(dateparser.parse('через год в 12:15'))
 
 connection = pymysql.connect(host=host, user=user, password=password, db=database, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
