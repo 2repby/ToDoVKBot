@@ -1,3 +1,5 @@
+from datetime import datetime
+from time import strftime
 import vk_api
 import pymysql
 import os
@@ -5,7 +7,7 @@ import random
 import threading
 import dateparser
 import re
-from timefhuman import timefhuman
+# from timefhuman import timefhuman
 from dotenv import load_dotenv
 load_dotenv()
 token = os.getenv('token')
@@ -25,14 +27,27 @@ print(dateparser.parse('через год в 12:15'))
 connection = pymysql.connect(host=host, user=user, password=password, db=database, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
 # Таймер для выполнения
-#
-# def (i):
-#     threading.Timer(2.0, printit, [i+1]).start()
-#     vk.method('messages.send', {'user_id': 4591935, 'message': 'Привет ' + str(i),
-#                                 'random_id': random.randint(0, 1000)})
-#     print("Hello ", i)
-#
-# printit(1)
+
+def check_tasks(i):
+    threading.Timer(2.0, check_tasks, [i+1]).start()
+    now = datetime.now()
+    cur = connection.cursor()
+    print("SELECT tasks.id, TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) AS t FROM users,tasks "
+        "WHERE tasks.id_user = users.id and tasks.notificated = 0 and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) > 0"
+                                                                                                                                     " and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) < 30")
+    cur.execute("SELECT tasks.id, TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) AS t FROM users,tasks "
+        "WHERE tasks.id_user = users.id and tasks.notificated = 0 and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) > 0"
+                                                            " and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) < 30")
+
+    for row in rows:
+        print(row)
+        # msg = msg + str(row['tasks.id']) + ' ' + row['name'] + ' ' + str(row['deadline']) + '\n'
+    # vk.method('messages.send',
+    #           {'peer_id': event.user_id, 'message': msg, 'random_id': random.randint(0, 1000)})
+    # vk.method('messages.send', {'user_id': 4591935, 'message': 'Привет ' + str(i),
+    #                             'random_id': random.randint(0, 1000)})
+    print("Hello ", i)
+check_tasks(1)
 
 # Основной цикл программы
 for event in longpoll.listen():
@@ -86,7 +101,16 @@ for event in longpoll.listen():
                 cur = connection.cursor()
                 # Добавляем задачу в таблицу
                 cur.execute("INSERT INTO tasks (name, deadline, tags, id_user) VALUES (%s, %s, %s, %s)",
-                            (params[1], params[2], params[3], id_user))
+                            (params[1].strip(' '), dateparser.parse(params[2]), params[3].strip(' '), id_user))
                 connection.commit()
                 cur.close()
-
+            else:
+                cur = connection.cursor()
+                cur.execute("SELECT * FROM users,tasks WHERE tasks.id_user = users.id and vk_id=" + str(user["id"]))
+                rows = cur.fetchall()
+                msg = ''
+                for row in rows:
+                    print(row)
+                    msg = msg + str(row['tasks.id']) + ' ' + row['name'] + ' ' + str(row['deadline']) + '\n'
+                vk.method('messages.send',
+                           {'peer_id': event.user_id, 'message': msg, 'random_id': random.randint(0, 1000)})
