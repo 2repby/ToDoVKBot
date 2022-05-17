@@ -29,24 +29,16 @@ connection = pymysql.connect(host=host, user=user, password=password, db=databas
 # Таймер для выполнения
 
 def check_tasks(i):
-    threading.Timer(2.0, check_tasks, [i+1]).start()
+    threading.Timer(10.0, check_tasks, [i+1]).start()
     now = datetime.now()
     cur = connection.cursor()
-    print("SELECT tasks.id, TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) AS t FROM users,tasks "
-        "WHERE tasks.id_user = users.id and tasks.notificated = 0 and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) > 0"
-                                                                                                                                     " and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) < 30")
-    cur.execute("SELECT tasks.id, TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) AS t FROM users,tasks "
-        "WHERE tasks.id_user = users.id and tasks.notificated = 0 and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) > 0"
-                                                            " and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) < 30")
-
+    cur.execute("SELECT tasks.id, tasks.name as tn, users.vk_id, TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) AS tdiff FROM users,tasks WHERE tasks.id_user = users.id and tasks.notificated = 0 and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) > 0 and TIMESTAMPDIFF(MINUTE,'" + str(now.strftime('%Y-%m-%d %H:%M:%S')) + "',tasks.deadline) < 30")
+    rows = cur.fetchall()
     for row in rows:
-        print(row)
-        # msg = msg + str(row['tasks.id']) + ' ' + row['name'] + ' ' + str(row['deadline']) + '\n'
-    # vk.method('messages.send',
-    #           {'peer_id': event.user_id, 'message': msg, 'random_id': random.randint(0, 1000)})
-    # vk.method('messages.send', {'user_id': 4591935, 'message': 'Привет ' + str(i),
-    #                             'random_id': random.randint(0, 1000)})
-    print("Hello ", i)
+        print(row['tdiff'])
+        msg = row['tn'] + 'осталось минут ' + str(row['tdiff'])
+        vk.method('messages.send',{'peer_id': row['vk_id'], 'message': msg, 'random_id': random.randint(0, 1000)})
+    print("Счетчик проверок дедлайнов задач: ", i)
 check_tasks(1)
 
 # Основной цикл программы
